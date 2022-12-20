@@ -1,0 +1,181 @@
+---
+title: "Week 7 Summary"
+output: html_notebook
+---
+
+Required Librarie
+```{r}
+library(tidyverse)
+library(nycflights13)
+library(maps)
+```
+
+13.4.6 Exercises
+Compute the average delay by destination, then join on the airports data frame so you can show the spatial distribution of delays. Here’s an easy way to draw a map of the United States:
+
+```{r}
+airports %>%
+  semi_join(flights, c("faa" = "dest")) %>%
+  ggplot(aes(lon, lat)) +
+    borders("state") +
+    geom_point() +
+    coord_quickmap()1
+
+```
+
+
+Add the location of the origin and destination (i.e. the lat and lon) to flights.
+
+```{r}
+airport_locations <-airports %>%
+  select(faa, lat, lon)
+
+flights %>%
+  select(year:day, hour, origin, dest) %>%
+  left_join(airport_locations, c("origin" = "faa")) %>%
+  left_join(airport_locations, c("dest" = "faa")) %>%
+  print()
+```
+
+
+Is there a relationship between the age of a plane and its delays?
+
+```{r}
+airplaneage <- planes %>%
+  select(tailnum, year)
+
+airplanedelay <-flights %>%
+  select(tailnum, dep_delay)
+
+agedelay <-left_join(airplaneage, airplanedelay, by = "tailnum") %>%
+  ggplot(aes(year, dep_delay), na.rm = TRUE) +
+    geom_point()%>%
+  print()
+
+##better version
+
+plane_cohorts <- inner_join(flights,
+  select(planes, tailnum, plane_year = year),
+  by = "tailnum"
+) %>%
+  mutate(age = year - plane_year) %>%
+  filter(!is.na(age)) %>%
+  mutate(age = if_else(age > 25, 25L, age)) %>%
+  group_by(age) %>%
+  summarise(
+    dep_delay_mean = mean(dep_delay, na.rm = TRUE),
+    dep_delay_sd = sd(dep_delay, na.rm = TRUE),
+    arr_delay_mean = mean(arr_delay, na.rm = TRUE),
+    arr_delay_sd = sd(arr_delay, na.rm = TRUE),
+    n_arr_delay = sum(!is.na(arr_delay)),
+    n_dep_delay = sum(!is.na(dep_delay))
+  )
+ggplot(plane_cohorts, aes(x = age, y = dep_delay_mean)) +
+  geom_point() +
+  scale_x_continuous("Age of plane (years)", breaks = seq(0, 30, by = 10)) +
+  scale_y_continuous("Mean Departure Delay (minutes)")
+
+```
+
+
+What weather conditions make it more likely to see a delay?
+
+```{r}
+flight_weather <-
+  flights %>%
+  inner_join(weather, by = c(
+    "origin" = "origin",
+    "year" = "year",
+    "month" = "month",
+    "day" = "day",
+    "hour" = "hour"
+  ))
+
+flight_weather %>%
+  group_by(precip) %>%
+  summarise(delay = mean(dep_delay, na.rm = TRUE)) %>%
+  ggplot(aes(x = precip, y = delay)) +
+  geom_line() + geom_point() %>%
+  print()
+
+flight_weather %>%
+  group_by(wind_gust) %>%
+  summarise(delay = mean(dep_delay, na.rm = TRUE)) %>%
+  ggplot(aes(x = wind_gust, y = delay)) +
+  geom_line() + geom_point() %>%
+  print()
+
+flight_weather %>%
+  group_by(wind_speed) %>%
+  summarise(delay = mean(dep_delay, na.rm = TRUE)) %>%
+  ggplot(aes(x = wind_speed, y = delay)) +
+  geom_line() + geom_point() %>%
+  print()
+
+```
+
+
+What happened on June 13 2013? Display the spatial pattern of delays, and then use Google to cross-reference with the weather.
+```{r}
+flights %>%
+   filter(year == 2013, month == 6, day == 13) %>%
+  group_by(dest) %>%
+  summarise(delay = mean(arr_delay, na.rm = TRUE)) %>%
+  inner_join(airports, by = c("dest" = "faa")) %>%
+  ggplot(aes(y = lat, x = lon, size = delay, colour = delay)) +
+  borders("state") +
+  geom_point()  +
+  coord_quickmap() 
+
+##per google, time of the derechos
+```
+13.5.1 Exercises
+
+What does it mean for a flight to have a missing tailnum? What do the tail numbers that don’t have a matching record in planes have in common? (Hint: one variable explains ~90% of the problems.)
+
+```{r}
+
+flights %>%
+  anti_join(planes, by = "tailnum") %>%
+  count(carrier, sort = TRUE) %>%
+  mutate(p = n / sum(n))
+
+```
+
+
+Filter flights to only show flights with planes that have flown at least 100 flights.
+
+```{r}
+flights %>%
+  count(tailnum, sort = TRUE, na.rm = TRUE)%>%
+  filter(n > 99) %>%
+  print()
+```
+
+
+Combine fueleconomy::vehicles and fueleconomy::common to find only the records for the most common models.
+
+```{r}
+library(fueleconomy)
+
+vehicles %>%
+  semi_join(common, by = c("make", "model")) %>%
+  print()
+```
+
+
+What does anti_join(flights, airports, by = c("dest" = "faa")) tell you? What does anti_join(airports, flights, by = c("faa" = "dest")) tell you?
+
+
+
+```{r}
+test1 <-anti_join(flights, airports, by = c("dest" = "faa"))
+print(test1)
+
+```
+```{r}
+test2 <-anti_join(airports, flights, by = c("faa" = "dest"))
+print(test2)
+```
+I'm guessing that there are different sources that the table data results from.
+

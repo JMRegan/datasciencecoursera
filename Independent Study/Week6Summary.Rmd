@@ -1,0 +1,198 @@
+---
+---
+title: "Week 6 Summary"
+output: html_notebook
+---
+Add surrogate key to flights.
+
+```{r}
+library(dplyr)
+library(purrr)
+library(tidyverse)
+library(nycflights13)
+
+flights %>% 
+  count(year, month, day, flight) %>% 
+  filter(n > 1)
+
+##we see that date, plus flight number is not an unique identifier
+```
+```{r}
+flights %>% 
+  mutate(flight_id = row_number()) %>%
+  glimpse()
+
+
+```
+Identify the keys in the following datasets
+
+Lahman::Batting,
+```{r}
+library('Lahman')
+Lahman::Batting %>%
+  count(playerID, yearID, stint) %>%
+  filter(n > 1) %>%
+  nrow()
+```
+
+babynames::babynames
+
+```{r}
+library('babynames')
+babynames::babynames %>%
+  glimpse() %>%
+  print()
+##key would be name per year per sex
+babynames::babynames %>%
+  count(year, name, sex) %>%
+  filter(n > 1) %>%
+  nrow()
+##output is [1] 0
+
+
+```
+
+nasaweather::atmos
+
+```{r}
+library(nasaweather)
+nasaweather::atmos %>%
+  glimpse() %>%
+  print()
+##looking at the dataset
+nasaweather::atmos %>%
+  count(lat, long, year, month)%>%
+    filter(n>1) %>%
+    nrow()
+  ##output is 0
+  
+```
+
+fueleconomy::vehicles
+
+```{r}
+library(fueleconomy)
+fueleconomy::vehicles %>%
+  glimpse()%>%
+  print()
+##seeing the columns present
+
+fueleconomy::vehicles %>%
+  count(id)%>%
+  filter(n>1)%>%
+  nrow()
+##output is 0
+  
+```
+Pivoting
+```{r}
+library(tidyverse)
+table4a
+##need year column but instead have distinct years
+table4a %>% 
+  pivot_longer(c(`1999`, `2000`), names_to = "year", values_to = "cases")
+```
+```{r}
+##Why are pivot_longer() and pivot_wider() not perfectly symmetrical?
+##Carefully consider the following example:
+
+stocks <- tibble(
+  year   = c(2015, 2015, 2016, 2016),
+  half  = c(   1,    2,     1,    2),
+  return = c(1.88, 0.59, 0.92, 0.17)
+)
+stocks %>% 
+  pivot_wider(names_from = year, values_from = return)%>%   pivot_longer(`2015`:`2016`, names_to = "year", values_to = "return")
+
+##we lose info when the data frame is changed from wide to long
+```
+pivot_longer() has a names_ptypes argument, e.g.  names_ptypes = list(year = double()). What does it do?
+
+change year format (chr) to dbl format
+
+Why does this code fail?
+```{r}
+library(tidyverse)
+table4a %>% 
+  pivot_longer(c(1999, 2000), names_to = "year", values_to = "cases")
+
+```
+The values 1999 and 2000 are not in the data frame
+
+
+What would happen if you widen this table? Why? How could you add a new column to uniquely identify each value?
+
+```{r}
+people <- tribble(
+  ~name,             ~names,  ~values,
+  #-----------------|--------|------
+  "Phillip Woods",   "age",       45,
+  "Phillip Woods",   "height",   186,
+  "Phillip Woods",   "age",       50,
+  "Jessica Cordero", "age",       37,
+  "Jessica Cordero", "height",   156
+)
+
+people %>%
+  group_by(name, names) %>%
+  mutate(obs = row_number()) %>%
+   pivot_wider(names_from = "names", values_from = "values")
+##works for now, but need to see if there is a reason in the data why 
+##"Philip Woods is there 2x"
+
+```
+Exercises
+What do the extra and fill arguments do in separate()?
+Experiment with the various options for the following two toy datasets.
+
+```{r}
+
+tibble(x = c("a,b,c", "d,e,f,g", "h,i,j")) %>% 
+  print()
+
+##separate into columns based on "one", "two", "three", would do based on commas
+
+tibble(x = c("a,b,c", "d,e,f,g", "h,i,j")) %>%   separate(x, into = c("one", "two", "three"),
+  extra = "warn", fill = "warn") %>%
+  print()
+
+##extra = warn, means that if we have excess data that does not fit our columns, the system will return a warning. We could also drop or merge
+
+
+##if I didn't want the warning
+
+tibble(x = c("a,b,c", "d,e,f,g", "h,i,j")) %>%   separate(x, into = c("one", "two", "three"),
+  extra = "drop", fill = "warn") %>%
+  print()
+
+
+```
+
+```{r}
+##New tibble to test out fill argument
+
+##fill = warn, means that it will return a warning if we there is not enough data pieces to fit our columns
+
+tibble(x = c("a,b,c", "d,e", "f,g,i")) %>% 
+  separate(x, c("one", "two", "three")) %>%
+  print()
+
+##with fill
+tibble(x = c("a,b,c", "d,e", "f,g,i")) %>% 
+  separate(x, c("one", "two", "three"), 
+           fill = "warn") %>%
+  print()
+```
+
+Both unite() and separate() have a remove argument. What does it do? Why would you set it to FALSE?
+
+For separate(), remove = TRUE eliminates the input column in the resuting data frame. This would be useful if you only want the resulting columns
+
+For unite(), remove = TRUE does the same thing as mentioned in separate().
+
+Compare and contrast separate() and extract(). Why are there three variations of separation (by position, by separator, and with groups), but only one unite?
+
+extract() takes groups (that you can set) and puts them in a new column, while separate() forms groups based on non-alpha separators in a column and puts the groups in new columns
+Extract() has more options than seprate()
+
+With unite() you are just combining columns so there is only one option for the columns you are combini
