@@ -1,0 +1,123 @@
+---
+title: "Week 8 Summary"
+output: html_notebook
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+14.2.5 **Exercises In code that doesn't use stringr, you'll often see
+paste() and paste0(). What's the difference between the two functions?**
+
+paste0 is faster
+
+**What stringr function are they equivalent to? How do the functions
+differ in their handling of NA?**
+
+str_c() Differs in the default separator is an empty string, sep = "",
+as opposed to a space, so it's more like paste0().
+
+paste() turns missing values into the string "NA", whereas str_c()
+propagates missing values. That means combining any strings with a
+missing value will result in another missing value.
+
+**In your own words, describe the difference between the sep and
+collapse arguments to str_c().**
+
+sep is the variable between vectors, while collapse is for combining.
+
+**Use str_length() and str_sub() to extract the middle character from a
+string. What will you do if the string has an even number of
+characters?**
+
+```{r}
+library(stringr)
+x <- c("Hello World")
+str_length(x)
+
+str_sub(x, -1, -6)
+```
+
+**What does str_wrap() do? When might you want to use it?**
+
+Wraps word into paragraphs. Printing results
+
+**What does str_trim() do? What's the opposite of str_trim()?**
+
+Removes white space at the end of a string. str_pad() adds whitespace
+
+**Write a function that turns (e.g.) a vector c("a", "b", "c") into the
+string a, b, and c. Think carefully about what it should do if given a
+vector of length 0, 1, or 2.**
+
+```{r}
+str_exp <- function(x, delim = ",") {
+  n <- length(x)
+  if (n == 0) {
+    ""
+  } else if (n == 1) {
+    x
+  } else if (n == 2) {
+    # no comma before and when n == 2
+    str_c(x[[1]], "and", x[[2]], sep = " ")
+  } else {
+    # commas after all n - 1 elements
+    not_last <- str_c(x[seq_len(n - 1)], delim)
+    # prepend "and" to the last element
+    last <- str_c("and", x[[n]], sep = " ")
+    # combine parts with spaces
+    str_c(c(not_last, last), collapse = " ")
+  }
+}
+x <- c("a", "b", "C")
+str_exp(x)
+```
+
+**14.3.1.1 Exercises** **Explain why each of these strings don't match a
+: "","\\","\\".**
+
+: is for a colon "" is for space"\\" is a literal backslash "\\" is 2
+literal backslashes
+
+**How would you match the sequence "\...\..."?**
+
+"\\...\\..."
+
+**What patterns will the regular expression "\...\..." match? How would
+you represent it as a string?** ......
+
+"\\..\\..\\.."
+
+**14.3.2.1 Exercises**
+
+**How would you match the literal string "**$^$"?
+
+"\$\^\$"
+
+**Given the corpus of common words in stringr::words, create regular
+expressions that find all words that:**
+
+**Start with "y".**
+```{r}
+str_view(stringr::words, "^y", match = TRUE)
+```
+
+
+**End with "x"**
+
+```{r}
+str_view(stringr::words, "x$", match = TRUE)
+```
+
+
+**Are exactly three letters long.**
+
+```{r}
+str_view(stringr::words, "^...$", match = TRUE)
+```
+
+**Have seven letters or more.**
+
+```{r}
+str_view(stringr::words, "^.......", match = TRUE)
+```
